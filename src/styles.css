@@ -1,0 +1,252 @@
+import { useMemo, useState } from 'react';
+
+const tabs = ['Chat', 'Image', 'Video', 'Code', 'Billboard'];
+
+const exampleChats = [
+  {
+    role: 'assistant',
+    text: 'Hello! I am ChatGPT 2. Ask me anything, generate a visual, create code, or help with Roblox Studio.',
+  },
+  {
+    role: 'user',
+    text: 'Create a Roblox script that makes a part float up and down.',
+  },
+  {
+    role: 'assistant',
+    text: 'Sure — here is a Lua script for Roblox Studio: ...',
+  },
+];
+
+const snippetMap = {
+  Python: `def greet(name):
+    return f"Hello, {name}!"
+
+print(greet("Creator"))`,
+  Lua: `local part = workspace.Part
+local speed = 2
+local amplitude = 4
+
+while true do
+    part.Position = part.Position + Vector3.new(0, math.sin(os.clock() * speed) * amplitude / 60, 0)
+    task.wait(0.02)
+end`,
+  JavaScript: `const button = document.getElementById('submit');
+button.addEventListener('click', () => {
+  console.log('Running assistant action');
+});`,
+};
+
+function App() {
+  const [activeTab, setActiveTab] = useState('Chat');
+  const [prompt, setPrompt] = useState('Create a cinematic city background with neon lights and a rainy night mood.');
+  const [selectedLanguage, setSelectedLanguage] = useState('Lua');
+  const [messages, setMessages] = useState(exampleChats);
+  const [billboardText, setBillboardText] = useState('Your generated prompt will appear here.');
+
+  const generatedPreview = useMemo(() => {
+    if (activeTab === 'Image') return 'Prompt ready for visual generation';
+    if (activeTab === 'Video') return 'Video concept ready';
+    if (activeTab === 'Code') return `${selectedLanguage} assistant ready`;
+    return 'AI response ready';
+  }, [activeTab, selectedLanguage]);
+
+  const handleSendMessage = () => {
+    if (!prompt.trim()) return;
+
+    const userMessage = { role: 'user', text: prompt };
+    const responseText =
+      activeTab === 'Chat'
+        ? `Here is a helpful answer for: "${prompt}". I can explain, generate code, or help you build the next part of your idea.`
+        : `Generated result for: "${prompt}". This is a prototype workflow for ChatGPT 2. Connect your AI provider to turn this into live output.`;
+
+    const assistantMessage = { role: 'assistant', text: responseText };
+    setMessages((current) => [...current, userMessage, assistantMessage]);
+    setBillboardText(responseText);
+    setPrompt('');
+  };
+
+  const handleCopyToBillboard = async () => {
+    const textToCopy =
+      activeTab === 'Code'
+        ? snippetMap[selectedLanguage] || 'Generated code'
+        : activeTab === 'Image'
+          ? `Image prompt: ${prompt || 'A cinematic futuristic city'}'
+          : activeTab === 'Video'
+            ? `Video prompt: ${prompt || 'A futuristic drone shot of a glowing city skyline'}'
+            : billboardText;
+
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setBillboardText(textToCopy);
+    } catch (error) {
+      console.error('Clipboard failed', error);
+      setBillboardText(textToCopy);
+    }
+  };
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'Chat':
+        return (
+          <div className="panel chat-panel">
+            <div className="chat-window">
+              {messages.map((message, index) => (
+                <div key={`${message.role}-${index}`} className={`message ${message.role}`}>
+                  <span className="role">{message.role === 'user' ? 'You' : 'ChatGPT 2'}</span>
+                  <p>{message.text}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="composer">
+              <textarea
+                value={prompt}
+                onChange={(event) => setPrompt(event.target.value)}
+                placeholder="Ask ChatGPT 2 anything..."
+              />
+              <div className="composer-actions">
+                <button className="secondary" onClick={() => setPrompt('')}>
+                  Clear
+                </button>
+                <button className="primary" onClick={handleSendMessage}>
+                  Send
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'Image':
+        return (
+          <div className="panel">
+            <div className="preview-box image-box">
+              <div className="preview-art" />
+            </div>
+            <div className="prompt-box">
+              <textarea
+                value={prompt}
+                onChange={(event) => setPrompt(event.target.value)}
+                placeholder="Describe the image you want to generate..."
+              />
+              <button className="primary" onClick={() => setBillboardText(`Image prompt: ${prompt}`)}>
+                Generate Image
+              </button>
+            </div>
+          </div>
+        );
+
+      case 'Video':
+        return (
+          <div className="panel">
+            <div className="preview-box video-box">
+              <div className="video-scene">
+                <span>AI Video</span>
+              </div>
+            </div>
+            <div className="prompt-box">
+              <textarea
+                value={prompt}
+                onChange={(event) => setPrompt(event.target.value)}
+                placeholder="Describe your video concept..."
+              />
+              <button className="primary" onClick={() => setBillboardText(`Video prompt: ${prompt}`)}>
+                Generate Video
+              </button>
+            </div>
+          </div>
+        );
+
+      case 'Code':
+        return (
+          <div className="panel code-panel">
+            <div className="code-toolbar">
+              <label>
+                Language
+                <select value={selectedLanguage} onChange={(e) => setSelectedLanguage(e.target.value)}>
+                  {Object.keys(snippetMap).map((lang) => (
+                    <option key={lang} value={lang}>
+                      {lang}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button className="primary" onClick={() => setBillboardText(snippetMap[selectedLanguage])}>
+                Generate Code
+              </button>
+            </div>
+
+            <pre className="code-block">{snippetMap[selectedLanguage]}</pre>
+          </div>
+        );
+
+      case 'Billboard':
+        return (
+          <div className="panel billboard-panel">
+            <div className="billboard-box">
+              <span className="label">Billboard Output</span>
+              <p>{billboardText}</p>
+            </div>
+            <button className="primary" onClick={handleCopyToBillboard}>
+              Copy to Billboard
+            </button>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand-block">
+          <div className="brand-mark" aria-label="ChatGPT 2 logo">
+            <svg viewBox="0 0 200 200" role="img" aria-hidden="true">
+              <path d="M100 20c-21 0-38 17-38 38 0 13 7 24 17 31-12 8-20 21-20 35 0 24 19 43 43 43 12 0 22-4 30-11 8 7 18 11 30 11 24 0 43-19 43-43 0-14-8-27-20-35 10-7 17-18 17-31 0-21-17-38-38-38-12 0-23 5-30 13-7-8-18-13-30-13zm0 18c12 0 22 10 22 22 0 11-9 21-22 21-12 0-22-10-22-21 0-12 10-22 22-22zm-28 56c9 0 16 7 16 16v20c0 9-7 16-16 16s-16-7-16-16v-20c0-9 7-16 16-16zm56 0c9 0 16 7 16 16v20c0 9-7 16-16 16s-16-7-16-16v-20c0-9 7-16 16-16z" fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <h1>ChatGPT 2</h1>
+            <p>AI Studio</p>
+          </div>
+        </div>
+
+        <nav className="nav-list" aria-label="Main navigation">
+          {tabs.map((tab) => (
+            <button
+              key={tab}
+              className={tab === activeTab ? 'nav-item active' : 'nav-item'}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      <main className="main-panel">
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">Workspace</p>
+            <h2>{activeTab}</h2>
+          </div>
+          <div className="status-pill">Ready</div>
+        </header>
+
+        <section className="content-card">
+          {renderTabContent()}
+        </section>
+
+        <footer className="status-bar">
+          <span>{generatedPreview}</span>
+          <button className="secondary" onClick={handleCopyToBillboard}>
+            Copy to Billboard
+          </button>
+        </footer>
+      </main>
+    </div>
+  );
+}
+
+export default App;
